@@ -53,6 +53,7 @@
         <script>document.documentElement.classList.add('js');</script>
         <script src="<?php echo asset('js/vendor/masonry.js'); ?>" defer></script>
         <script src="<?php echo asset('js/main.js'); ?>" defer></script>
+        <script src="<?php echo asset('js/lightbox.js'); ?>" defer></script>
 <?php if ($ga4_id) { ?>
 
         <script async src="https://www.googletagmanager.com/gtag/js?id=<?php echo rawurlencode($ga4_id); ?>"></script>
@@ -81,13 +82,34 @@
   $loading = $i < $eager ? 'eager' : 'lazy';
 ?>
               <li class="mikey-image">
-                <img src="<?php echo $image['src']; ?>" alt="<?php echo htmlspecialchars($image['alt'], ENT_QUOTES); ?>"<?php echo $size; ?> loading="<?php echo $loading; ?>" decoding="async">
+                <a class="mikey-link" href="<?php echo $image['src']; ?>">
+                  <img src="<?php echo $image['src']; ?>" alt="<?php echo htmlspecialchars($image['alt'], ENT_QUOTES); ?>"<?php echo $size; ?> loading="<?php echo $loading; ?>" decoding="async">
+                </a>
               </li>
 <?php }// END FOREACH LOOP ?>
             </ul><!-- /.photos -->
           </main>
 
         </div><!-- /.page -->
+
+        <!-- LIGHTBOX: js/lightbox.js OPENS THIS WHEN AN IMAGE IS CLICKED -->
+        <dialog class="lightbox" aria-label="Image viewer">
+          <div class="lightbox-scrim"></div>
+          <div class="lightbox-stage">
+            <img class="lightbox-image" alt="">
+          </div>
+          <p class="lightbox-count" aria-hidden="true"><span class="lightbox-position">1</span> / <?php echo $count; ?></p>
+          <p class="lightbox-status visually-hidden" aria-live="polite"></p>
+          <button class="lightbox-button lightbox-close" type="button" aria-label="Close" autofocus>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+          </button>
+          <button class="lightbox-button lightbox-prev" type="button" aria-label="Previous image">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>
+          </button>
+          <button class="lightbox-button lightbox-next" type="button" aria-label="Next image">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg>
+          </button>
+        </dialog>
 
     </body>
 </html>

@@ -32,6 +32,7 @@
   --ink: oklch(94% 0.014 85);
   --muted: oklch(74% 0.018 75);
   --accent: oklch(80% 0.145 72);
+  --scrim: oklch(11% 0.006 70);
 
   --display: "Bodoni Moda", "Bodoni 72", Didot, Georgia, serif;
 
@@ -56,6 +57,7 @@ html {
   font-family: var(--display);
   line-height: 1.4;
   scrollbar-color: var(--rule) var(--bg);
+  scrollbar-gutter: stable; /* no layout shift when the lightbox locks scrolling */
 }
 
 body {
@@ -185,24 +187,45 @@ body {
   }
 }
 
+.mikey-link {
+  display: block;
+  overflow: hidden;
+  border-radius: var(--radius);
+  cursor: zoom-in;
+}
+
 .mikey-image img {
   display: block;
   width: 100%;
   height: auto;
   border-radius: var(--radius);
   background: var(--surface);
+  transition: transform 700ms var(--ease-out);
+}
+
+@media (hover: hover) and (prefers-reduced-motion: no-preference) {
+  .mikey-link:hover img {
+    transform: scale(1.03);
+  }
+}
+
+/* The lightbox lifts the image out of the grid, so its tile sits empty while
+ * it is open (js/lightbox.js adds .is-viewing). */
+
+.mikey-image.is-viewing .mikey-link {
+  visibility: hidden;
 }
 
 /* Rise: each image slides up from the bottom of the window as it scrolls into
  * view (js/main.js adds .is-in). Scoped to .js so nothing is hidden when
  * JavaScript is off. */
 
-.js .mikey-image img {
+.js .mikey-link {
   opacity: 0;
   transform: translateY(var(--rise));
 }
 
-.js .mikey-image.is-in img {
+.js .mikey-image.is-in .mikey-link {
   opacity: 1;
   transform: none;
   transition:
@@ -211,18 +234,178 @@ body {
   transition-delay: var(--delay, 0ms);
 }
 
-.js .mikey-image.is-instant img {
+.js .mikey-image.is-instant .mikey-link {
   transition: none;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .js .mikey-image img {
+  .js .mikey-link {
     transform: none;
   }
 
-  .js .mikey-image.is-in img {
+  .js .mikey-image.is-in .mikey-link {
     transition: opacity 400ms linear;
   }
+}
+
+/* ==========================================================================
+   Lightbox
+   ========================================================================== */
+
+/* While open, the page stops scrolling. The space the scrollbar leaves behind
+ * (on systems that show one) takes the scrim's color so it doesn't show. */
+html {
+  transition: background-color 300ms ease-out;
+}
+
+html.has-lightbox {
+  overflow: hidden;
+  background-color: var(--scrim);
+}
+
+.lightbox {
+  --button: 3rem;
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  max-height: none;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  overflow: hidden;
+  overscroll-behavior: contain;
+  background: transparent;
+  color: var(--ink);
+}
+
+.lightbox::backdrop {
+  background: transparent;
+}
+
+.lightbox-scrim {
+  position: absolute;
+  inset: 0;
+  background: color-mix(in oklch, var(--scrim) 96%, transparent);
+}
+
+/* The area the image is fitted into. Clicks pass through it to the scrim,
+ * so clicking anywhere around the image closes the lightbox. */
+.lightbox-stage {
+  position: absolute;
+  inset: var(--edge) calc(var(--edge) + var(--button) + 1rem);
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+}
+
+.lightbox-image {
+  display: block;
+  max-width: none;
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: 0 2rem 4rem -1.5rem oklch(0% 0 0 / 0.7);
+  transform-origin: 0 0;
+  pointer-events: auto;
+}
+
+.lightbox-count {
+  position: absolute;
+  top: var(--edge);
+  left: var(--edge);
+  margin: 0;
+  line-height: var(--button);
+  font-size: 1rem;
+  font-variant-numeric: lining-nums tabular-nums;
+  color: var(--muted);
+}
+
+.lightbox-position {
+  color: var(--ink);
+}
+
+.lightbox-button {
+  position: absolute;
+  display: grid;
+  place-items: center;
+  width: var(--button);
+  height: var(--button);
+  padding: 0;
+  border: 1px solid var(--rule);
+  border-radius: 50%;
+  background: oklch(21.5% 0.01 70 / 0.8);
+  color: var(--ink);
+  cursor: pointer;
+  transition:
+    background-color 150ms ease-out,
+    border-color 150ms ease-out,
+    scale 150ms ease-out;
+}
+
+.lightbox-button:hover {
+  background: var(--rule);
+  border-color: oklch(42% 0.012 70);
+}
+
+.lightbox-button:active {
+  scale: 0.92;
+}
+
+.lightbox-button svg {
+  width: 1.25rem;
+  height: 1.25rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.lightbox-close {
+  top: var(--edge);
+  right: var(--edge);
+}
+
+.lightbox-prev,
+.lightbox-next {
+  top: 50%;
+  translate: 0 -50%;
+}
+
+.lightbox-prev {
+  left: var(--edge);
+}
+
+.lightbox-next {
+  right: var(--edge);
+}
+
+/* Narrow screens: no room for arrows beside the image, so they move to a row
+ * along the bottom. */
+@media (max-width: 40em) {
+  .lightbox-stage {
+    inset: calc(var(--edge) * 2 + var(--button)) var(--edge);
+  }
+
+  .lightbox-prev,
+  .lightbox-next {
+    top: auto;
+    bottom: var(--edge);
+    translate: none;
+  }
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
 }
 
 /* ==========================================================================
@@ -239,9 +422,13 @@ body {
     text-shadow: none !important;
   }
 
-  .js .mikey-image img {
+  .js .mikey-link {
     opacity: 1;
     transform: none;
+  }
+
+  .lightbox {
+    display: none;
   }
 
   .mikey-image {
