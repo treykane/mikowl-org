@@ -29,6 +29,8 @@
     );
   }// END FOREACH LOOP
 
+  shuffle($images);// A FRESH ORDER ON EVERY PAGE LOAD
+
   $eager = 6;// THE FIRST FEW IMAGES ARE ABOVE THE FOLD, SO LOAD THEM RIGHT AWAY. THE REST ARE LAZY LOADED.
   $count = count($images);
 
