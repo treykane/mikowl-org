@@ -10,7 +10,8 @@
  *   php bin/optimize-images.php --force   redo every image
  *
  * Run it after adding or replacing images, then commit img/web/ with them.
- * Originals in img/mikowl/ are never modified.
+ * Originals in img/mikowl/ are never modified. It also lists any image that
+ * has no description in img/descriptions.json yet.
  *
  * Best results come from Google's WebP tools (macOS: brew install webp):
  * cwebp keeps each image's color profile, and gif2webp is the only way to
@@ -107,6 +108,19 @@ foreach (glob($target.'*.webp') as $copy) {// REMOVE COPIES WHOSE ORIGINAL WAS D
   if (!is_file($source.basename($copy, '.webp'))) {
     unlink($copy);
     echo "  removed  ".basename($copy)." (original is gone)\n";
+  }
+}
+
+// AN IMAGE WITHOUT A DESCRIPTION GETS A GENERIC ALT TEXT, SO POINT IT OUT
+$descriptions = json_decode((string) @file_get_contents($root.'/img/descriptions.json'), true);
+
+if (!is_array($descriptions)) {
+  echo "  warning  img/descriptions.json is missing or not valid JSON, so every image gets a generic alt text\n";
+} else {
+  foreach (glob($source.'*') as $file) {
+    if (preg_match('/\.(jpe?g|png|gif|webp|avif)$/i', $file) && !isset($descriptions[basename($file)])) {
+      echo "  describe ".basename($file)." (add it to img/descriptions.json)\n";
+    }
   }
 }
 

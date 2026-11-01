@@ -1,11 +1,19 @@
 <?php
 
-  require __DIR__.'/inc/asset.php';// CACHE BUSTING: asset('css/main.css') -> css/main.css?v=<last modified>
+  require __DIR__.'/inc/asset.php';// CACHE BUSTING: asset('css/main.css') -> css/main.css?v=<fingerprint of its contents>
 
   $ga4_id = '';// GOOGLE ANALYTICS 4 MEASUREMENT ID, LIKE 'G-XXXXXXXXXX'. LEAVE EMPTY FOR NO ANALYTICS.
 
+  // HOW THE PAGE SHOWS UP IN SEARCH RESULTS AND LINK PREVIEWS (SEE README)
+  $site_url = 'https://mikowl.org/';// THE ONE ADDRESS SEARCH ENGINES SHOULD LIST, HOWEVER THE PAGE WAS REACHED (www., /index.php...)
+  $title = 'mikowl.org - a grassroots millennial art infusion';
+  $description = 'See Mikowl.... LOOK AT HIM! A gallery of Mikowl photoshopped into famous paintings, movie scenes, posters, memes, and more.';
+  $share_image = 'img/share.jpg';// THE PICTURE IN LINK PREVIEWS: A JPEG ABOUT 1200PX WIDE AND UNDER 300KB (WHATSAPP SKIPS BIGGER ONES)
+  $share_alt = "Mikowl leering through the splintered door in the “Here's Johnny!” scene from The Shining";
+
   $dirname = "img/mikowl/";// IMAGE DIRECTORY (ORIGINALS)
   $webdir = "img/web/";// LIGHTER WEBP COPIES MADE BY bin/optimize-images.php
+  $descriptions = json_decode((string) @file_get_contents(__DIR__.'/img/descriptions.json'), true);// ALT TEXT FOR EACH IMAGE, BY FILE NAME
   $images = array();
 
   foreach (glob(__DIR__.'/'.$dirname."*") as $file) {// FOREACH ALL ITEMS IN THE GLOB
@@ -25,7 +33,9 @@
       'src'    => asset($path),
       'width'  => $size ? $size[0] : null,
       'height' => $size ? $size[1] : null,
-      'alt'    => 'Mikowl: '.ucfirst(trim(preg_replace('/[-_\s]+/', ' ', pathinfo($name, PATHINFO_FILENAME)))),
+      'alt'    => isset($descriptions[$name])
+        ? $descriptions[$name]
+        : 'Mikowl: '.ucfirst(trim(preg_replace('/[-_\s]+/', ' ', pathinfo($name, PATHINFO_FILENAME)))),// NOT DESCRIBED YET: GO BY THE FILE NAME
     );
   }// END FOREACH LOOP
 
@@ -33,16 +43,46 @@
 
   $eager = 6;// THE FIRST FEW IMAGES ARE ABOVE THE FOLD, SO LOAD THEM RIGHT AWAY. THE REST ARE LAZY LOADED.
   $count = count($images);
+  $share_size = @getimagesize(__DIR__.'/'.$share_image);
+
+  // STRUCTURED DATA: TELLS SEARCH ENGINES THE SITE'S NAME, THAT THIS PAGE IS AN IMAGE GALLERY, AND WHAT EACH IMAGE SHOWS
+  $gallery = array();
+  foreach ($images as $image) {
+    $gallery[] = array('@type' => 'ImageObject', 'contentUrl' => $site_url.$image['src'], 'caption' => $image['alt']);
+  }
+  $schema = array(
+    '@context' => 'https://schema.org',
+    '@graph'   => array(
+      array('@type' => 'WebSite', 'url' => $site_url, 'name' => 'mikowl.org', 'alternateName' => 'Mikowl'),
+      array('@type' => 'ImageGallery', 'url' => $site_url, 'name' => $title, 'description' => $description, 'associatedMedia' => $gallery),
+    ),
+  );
 
 ?><!doctype html>
 <html lang="en">
     <head>
         <meta charset="utf-8">
-        <title>mikowl.org - a grassroots millennial art infusion</title>
-        <meta name="description" content="See Mikowl....  LOOK AT HIM!">
+        <title><?php echo htmlspecialchars($title, ENT_QUOTES); ?></title>
+        <meta name="description" content="<?php echo htmlspecialchars($description, ENT_QUOTES); ?>">
         <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="robots" content="max-image-preview:large">
         <meta name="color-scheme" content="dark">
         <meta name="theme-color" content="#110e0b">
+        <link rel="canonical" href="<?php echo $site_url; ?>">
+
+        <!-- LINK PREVIEWS: HOW THE PAGE LOOKS WHEN SHARED ON FACEBOOK, X, IMESSAGE, SLACK... -->
+        <meta property="og:type" content="website">
+        <meta property="og:site_name" content="mikowl.org">
+        <meta property="og:url" content="<?php echo $site_url; ?>">
+        <meta property="og:title" content="<?php echo htmlspecialchars($title, ENT_QUOTES); ?>">
+        <meta property="og:description" content="<?php echo htmlspecialchars($description, ENT_QUOTES); ?>">
+        <meta property="og:image" content="<?php echo $site_url.asset($share_image); ?>">
+<?php if ($share_size) { ?>
+        <meta property="og:image:width" content="<?php echo $share_size[0]; ?>">
+        <meta property="og:image:height" content="<?php echo $share_size[1]; ?>">
+<?php } ?>
+        <meta property="og:image:alt" content="<?php echo htmlspecialchars($share_alt, ENT_QUOTES); ?>">
+        <meta name="twitter:card" content="summary_large_image">
 
         <link rel="icon" href="<?php echo asset('favicon.ico'); ?>" sizes="16x16">
         <link rel="apple-touch-icon" href="<?php echo asset('apple-touch-icon.png'); ?>">
@@ -82,10 +122,11 @@
 <?php foreach ($images as $i => $image) {
   $size = $image['width'] ? ' width="'.$image['width'].'" height="'.$image['height'].'"' : '';
   $loading = $i < $eager ? 'eager' : 'lazy';
+  $priority = $i === 0 ? ' fetchpriority="high"' : '';// FETCH THE FIRST IMAGE BEFORE THE REST: IT'S USUALLY THE BIGGEST THING ON SCREEN, AND GOOGLE MEASURES HOW FAST THAT SHOWS UP (LCP)
 ?>
               <li class="mikey-image">
                 <a class="mikey-link" href="<?php echo $image['src']; ?>">
-                  <img src="<?php echo $image['src']; ?>" alt="<?php echo htmlspecialchars($image['alt'], ENT_QUOTES); ?>"<?php echo $size; ?> loading="<?php echo $loading; ?>" decoding="async">
+                  <img src="<?php echo $image['src']; ?>" alt="<?php echo htmlspecialchars($image['alt'], ENT_QUOTES); ?>"<?php echo $size; ?> loading="<?php echo $loading; ?>"<?php echo $priority; ?> decoding="async">
                 </a>
               </li>
 <?php }// END FOREACH LOOP ?>
@@ -112,6 +153,9 @@
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg>
           </button>
         </dialog>
+
+        <!-- STRUCTURED DATA FOR SEARCH ENGINES (BUILT AT THE TOP OF THIS FILE) -->
+        <script type="application/ld+json"><?php echo json_encode($schema, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_HEX_TAG); ?></script>
 
     </body>
 </html>
