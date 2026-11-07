@@ -24,6 +24,6 @@ The page also carries structured data that gives search engines the site's name,
 CSS, JS, and images are linked through `asset()` (see `inc/asset.php`), which adds a fingerprint of the file's contents to the URL, e.g. `css/main.css?v=3f2a9c1b`. Change a file and its URL changes with it, so visitors' browsers fetch the new version instead of a stale cached copy. A file that hasn't changed keeps its URL, even through a deploy that rewrites every file, so it stays cached and its URL stays steady for Google Images. Nothing needs to be bumped by hand; just link new files with `<?php echo asset('path/to/file'); ?>`.
 
 ### Long-term Roadmap
-~~1. Dump PHP and Render site using JS~~
-~~2. Create server-side build step so changes can be deployed from the git repository~~
+1. ~~Dump PHP and Render site using JS~~
+2. ~~Create server-side build step so changes can be deployed from the git repository~~
 3. Build out photo service API to be used in a number of ways
